@@ -1,0 +1,21 @@
+# Ignore all build directories (in all modules)
+**/build/
+
+# Ignore Android Studio project files
+.idea/
+*.iml
+
+# Local configuration file
+local.properties
+
+# Gradle cache
+.gradle/
+**/.gradle/
+
+# Log and temp files
+*.log
+*.tmp
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
