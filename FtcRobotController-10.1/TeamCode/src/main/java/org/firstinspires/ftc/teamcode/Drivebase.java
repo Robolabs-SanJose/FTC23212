@@ -28,13 +28,15 @@ public class Drivebase {
     double yaw;
     private static boolean initialized = false;
     private OpMode robot;
+    IMU imu;
+    private PIDController turnController;
 
     private Drivebase(){}
     private static final Drivebase INSTANCE = new Drivebase();
     public static Drivebase getInstance() {return INSTANCE;}
 
-    public void initialize(OpMode robot, String leftFrontName,
-                           String leftBackName, String rightFrontName, String rightBackName) {
+    public void initialize(OpMode robot, String leftFrontName, String leftBackName,
+                           String rightFrontName, String rightBackName, RevHubOrientationOnRobot orientationOnRobot) {
         if (initialized) {
             return;
         }
@@ -45,6 +47,9 @@ public class Drivebase {
         leftBackDrive = robot.hardwareMap.get(DcMotor.class, leftBackName);
         rightFrontDrive = robot.hardwareMap.get(DcMotor.class, rightFrontName);
         rightBackDrive = robot.hardwareMap.get(DcMotor.class, rightBackName);
+        imu = robot.hardwareMap.get(IMU.class,"imu")
+        imu.initialize(new IMU.Parameters(orientationOnRobot));
+        turnController = new PIDController(.01, 0, 0);
 
         leftFrontDrive.setDirection(DcMotor.Direction.FORWARD);
         leftBackDrive.setDirection(DcMotor.Direction.FORWARD);
@@ -57,10 +62,24 @@ public class Drivebase {
 
     public static void reset(){initialized = false;}
 
-    public void update(double axial, double lateral, double yaw) {
-        this.yaw = yaw;
+    public void update(double axial, double lateral, double turningX, double turningY) {
         this.axial = axial;
         this.lateral = lateral;
+
+        YawPitchRollAngles imuAngles = imu.getRobotYawPitchRollAngles();
+        double imuData = imuAngles.getYaw(AngleUnit.DEGREES);
+        imuData = -imuData;
+        if (imuData < 0) {
+            imuData += 360;
+        }
+
+        if ((turningX != 0) && (turningY != 0)){
+            double heading = atan2(turningX, -turningY);
+            heading *= 180/PI;
+            turnController.setSetpoint(heading);
+        }
+
+        yaw = turnController.update(imuData, true)
 
         leftFrontPower = axial + lateral - yaw;
         rightFrontPower = axial - lateral + yaw;
